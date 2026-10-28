@@ -29,7 +29,7 @@ public class OrderService {
 
     @Transactional(readOnly = true)
     public List<CustomerOrder> getAllOrders() {
-        return orderRepository.findAllByOrderByCreatedAtDesc();
+        return orderRepository.findAllWithItems();
     }
 
     @Transactional(readOnly = true)
