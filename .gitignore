@@ -1,0 +1,48 @@
+# Node dependencies
+node_modules/
+frontend/node_modules/
+.pnp
+.pnp.js
+
+# Next.js / Frontend build
+frontend/.next/
+.next/
+out/
+build/
+dist/
+
+# Maven / Java build artifacts
+target/
+backend/target/
+*.class
+*.jar
+*.war
+*.nar
+*.ear
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment and secrets
+.env
+.env*.local
+!.env.example
+*.pem
+*.key
+
+# IDE and OS
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temporary files
+tmp/
+temp/
