@@ -40,7 +40,7 @@ public class Book {
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    @Column(name = "cover_image_url")
+    @Column(name = "cover_image_url", columnDefinition = "TEXT")
     private String coverImageUrl;
 
     @NotNull(message = "Stock quantity is required")

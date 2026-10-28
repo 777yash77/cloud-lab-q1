@@ -11,13 +11,19 @@ export const api = {
     const res = await fetch(`${API_BASE_URL}/books${query}`, {
       cache: 'no-store',
     });
-    if (!res.ok) throw new Error(`Failed to fetch books: ${res.statusText}`);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || err.message || `Failed to fetch books (${res.status})`);
+    }
     return res.json();
   },
 
   async getBookById(id) {
     const res = await fetch(`${API_BASE_URL}/books/${id}`);
-    if (!res.ok) throw new Error(`Failed to fetch book #${id}`);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || err.message || `Failed to fetch book #${id}`);
+    }
     return res.json();
   },
 
@@ -29,7 +35,7 @@ export const api = {
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || 'Failed to create book');
+      throw new Error(err.error || err.message || `Failed to publish book (${res.status})`);
     }
     return res.json();
   },
@@ -42,7 +48,7 @@ export const api = {
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || 'Failed to update book');
+      throw new Error(err.error || err.message || `Failed to update book (${res.status})`);
     }
     return res.json();
   },
@@ -51,14 +57,20 @@ export const api = {
     const res = await fetch(`${API_BASE_URL}/books/${id}`, {
       method: 'DELETE',
     });
-    if (!res.ok) throw new Error('Failed to delete book');
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || err.message || `Failed to delete book (${res.status})`);
+    }
     return res.json();
   },
 
   // Orders Management
   async getOrders() {
     const res = await fetch(`${API_BASE_URL}/orders`, { cache: 'no-store' });
-    if (!res.ok) throw new Error('Failed to fetch orders');
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || err.message || `Failed to fetch orders (${res.status})`);
+    }
     return res.json();
   },
 
@@ -70,7 +82,7 @@ export const api = {
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || 'Failed to submit order');
+      throw new Error(err.error || err.message || `Failed to place order (${res.status})`);
     }
     return res.json();
   },
@@ -83,7 +95,7 @@ export const api = {
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || 'Failed to update status');
+      throw new Error(err.error || err.message || `Failed to update status (${res.status})`);
     }
     return res.json();
   },
@@ -92,7 +104,10 @@ export const api = {
     const res = await fetch(`${API_BASE_URL}/orders/${id}`, {
       method: 'DELETE',
     });
-    if (!res.ok) throw new Error('Failed to cancel order');
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || err.message || `Failed to delete order (${res.status})`);
+    }
     return res.json();
   },
 
