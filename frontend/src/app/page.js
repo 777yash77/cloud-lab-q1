@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Navbar from '../components/Navbar';
 import BookCard from '../components/BookCard';
 import BookDetailsModal from '../components/BookDetailsModal';
@@ -17,9 +17,11 @@ export default function Home() {
   const [loadingBooks, setLoadingBooks] = useState(true);
   const [loadingOrders, setLoadingOrders] = useState(false);
 
-  // Filters & Search
+  // Filters, Search, Sorting, and View Mode
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('ALL');
+  const [sortBy, setSortBy] = useState('FEATURED'); // 'FEATURED' | 'PRICE_ASC' | 'PRICE_DESC' | 'STOCK_DESC' | 'TITLE_AZ'
+  const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
 
   // Modals state
   const [selectedBookForDetails, setSelectedBookForDetails] = useState(null);
@@ -35,7 +37,7 @@ export default function Home() {
     setToasts((prev) => [...prev, { id, message, type }]);
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 4000);
+    }, 4500);
   };
 
   const removeToast = (id) => {
@@ -64,7 +66,6 @@ export default function Home() {
       setOrders(data);
     } catch (err) {
       console.error('Error fetching orders:', err);
-      // Suppress noisy toast if it's the initial check
     } finally {
       setLoadingOrders(false);
     }
@@ -77,6 +78,23 @@ export default function Home() {
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders]);
+
+  // Client-side sorting on retrieved books
+  const sortedBooks = useMemo(() => {
+    const list = [...books];
+    switch (sortBy) {
+      case 'PRICE_ASC':
+        return list.sort((a, b) => Number(a.price) - Number(b.price));
+      case 'PRICE_DESC':
+        return list.sort((a, b) => Number(b.price) - Number(a.price));
+      case 'STOCK_DESC':
+        return list.sort((a, b) => Number(b.stockQuantity) - Number(a.stockQuantity));
+      case 'TITLE_AZ':
+        return list.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+      default:
+        return list;
+    }
+  }, [books, sortBy]);
 
   // CRUD Handlers for Books
   const handleOpenAddBook = () => {
@@ -104,7 +122,7 @@ export default function Home() {
     if (window.confirm(`Are you sure you want to remove "${book.title}" from the catalog?`)) {
       try {
         await api.deleteBook(book.id);
-        addToast(`Deleted "${book.title}" from bookstore.`, 'success');
+        addToast(`Deleted "${book.title}" from catalog.`, 'success');
         fetchBooks();
       } catch (err) {
         addToast(err.message || 'Failed to delete book.', 'error');
@@ -129,7 +147,7 @@ export default function Home() {
       await api.updateOrderStatus(orderId, newStatus);
       addToast(`Order #${orderId} status changed to ${newStatus}.`);
       fetchOrders();
-      fetchBooks(); // in case inventory was restored
+      fetchBooks();
     } catch (err) {
       addToast(err.message || 'Failed to update order status.', 'error');
     }
@@ -139,7 +157,7 @@ export default function Home() {
     if (window.confirm(`Are you sure you want to cancel / delete order #${orderId}?`)) {
       try {
         await api.deleteOrder(orderId);
-        addToast(`Order #${orderId} deleted successfully.`);
+        addToast(`Order #${orderId} removed successfully.`);
         fetchOrders();
         fetchBooks();
       } catch (err) {
@@ -148,9 +166,19 @@ export default function Home() {
     }
   };
 
-  const categories = ['ALL', 'Technology', 'Business', 'Self-Help', 'Fiction', 'Science', 'History', 'Philosophy'];
+  const categories = [
+    { label: 'ALL', icon: '✨' },
+    { label: 'Technology', icon: '💻' },
+    { label: 'Business', icon: '📈' },
+    { label: 'Self-Help', icon: '💡' },
+    { label: 'Fiction', icon: '📖' },
+    { label: 'Science', icon: '🔬' },
+    { label: 'History', icon: '🏛️' },
+    { label: 'Philosophy', icon: '🧠' },
+  ];
 
   const totalStock = books.reduce((acc, b) => acc + (b.stockQuantity || 0), 0);
+  const totalCatalogValue = books.reduce((acc, b) => acc + (Number(b.price || 0) * (b.stockQuantity || 0)), 0);
 
   return (
     <>
@@ -159,102 +187,192 @@ export default function Home() {
         setActiveTab={setActiveTab}
         onOpenAddBook={handleOpenAddBook}
         ordersCount={orders.length}
+        booksCount={books.length}
       />
 
       <main className="container">
-        {/* Hero Section */}
+        {/* Modernized Hero Section */}
         <section className="hero">
           <div className="hero-badge">
-            <span style={{ fontSize: '1rem' }}>⚡</span> Powered by Next.js & Spring Boot + MySQL
+            <span className="pulse-dot"></span>
+            <span>Cloud-Native High Concurrency Architecture</span>
           </div>
-          <h1>Discover, Share & Manage Books</h1>
+
+          <h1>
+            Discover, Curate & Manage <span className="highlight">Books Online</span>
+          </h1>
+
           <p>
-            An enterprise full-stack bookstore platform with dynamic CRUD operations, real-time inventory tracking, and seamless customer order fulfillment.
+            An enterprise full-stack cloud bookstore platform engineered with Spring Boot 3, MySQL 8, Docker containerization, and a modern reactive Next.js 14 user interface.
           </p>
 
           {/* Quick Metrics Bar */}
-          <div style={{
-            display: 'inline-flex',
-            gap: '2rem',
-            background: 'var(--bg-secondary)',
-            border: '1px solid var(--border-subtle)',
-            padding: '0.8rem 2rem',
-            borderRadius: 'var(--radius-md)',
-            boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
-            marginBottom: '1.5rem',
-            flexWrap: 'wrap',
-            justifyContent: 'center'
-          }}>
-            <div>
-              <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#fff' }}>{books.length}</div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Book Titles</div>
+          <div className="metrics-strip">
+            <div className="metric-card">
+              <div className="metric-icon-wrap" style={{ background: 'rgba(99, 102, 241, 0.15)', color: 'var(--primary)' }}>
+                📚
+              </div>
+              <div>
+                <div className="metric-val">{books.length}</div>
+                <div className="metric-label">Book Titles</div>
+                <div className="metric-sub">Cataloged in MySQL</div>
+              </div>
             </div>
-            <div style={{ borderLeft: '1px solid var(--border-subtle)', paddingLeft: '2rem' }}>
-              <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--accent-emerald)' }}>{totalStock}</div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Units in Stock</div>
+
+            <div className="metric-card">
+              <div className="metric-icon-wrap" style={{ background: 'rgba(16, 185, 129, 0.15)', color: 'var(--accent-emerald)' }}>
+                📦
+              </div>
+              <div>
+                <div className="metric-val">{totalStock}</div>
+                <div className="metric-label">Units in Stock</div>
+                <div className="metric-sub">Live inventory tracking</div>
+              </div>
             </div>
-            <div style={{ borderLeft: '1px solid var(--border-subtle)', paddingLeft: '2rem' }}>
-              <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--accent-cyan)' }}>{orders.length}</div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Customer Orders</div>
+
+            <div className="metric-card">
+              <div className="metric-icon-wrap" style={{ background: 'rgba(6, 182, 212, 0.15)', color: 'var(--accent-cyan)' }}>
+                💎
+              </div>
+              <div>
+                <div className="metric-val">${totalCatalogValue.toFixed(0)}</div>
+                <div className="metric-label">Inventory Value</div>
+                <div className="metric-sub">Across all categories</div>
+              </div>
+            </div>
+
+            <div className="metric-card">
+              <div className="metric-icon-wrap" style={{ background: 'rgba(245, 158, 11, 0.15)', color: 'var(--accent-amber)' }}>
+                🛍️
+              </div>
+              <div>
+                <div className="metric-val">{orders.length}</div>
+                <div className="metric-label">Customer Orders</div>
+                <div className="metric-sub">Fulfilled via REST API</div>
+              </div>
             </div>
           </div>
         </section>
 
         {activeTab === 'catalog' ? (
           <>
-            {/* Search and Category Filters */}
+            {/* Search, Filter, Sort and Layout Controls Bar */}
             <div className="controls-bar">
-              <div className="search-box">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="11" cy="11" r="8"/>
-                  <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-                </svg>
-                <input
-                  type="text"
-                  placeholder="Search books by title, author, category, or ISBN..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
+              <div className="controls-row-top">
+                <div className="search-box">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="11" cy="11" r="8"/>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                  </svg>
+                  <input
+                    type="text"
+                    placeholder="Search books by title, author, category, or ISBN..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                  {searchQuery && (
+                    <button className="search-clear" onClick={() => setSearchQuery('')}>&times;</button>
+                  )}
+                </div>
+
+                <div className="view-controls">
+                  <select
+                    className="sort-select"
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    title="Sort Books"
+                  >
+                    <option value="FEATURED">Featured / Default</option>
+                    <option value="PRICE_ASC">Price: Low to High</option>
+                    <option value="PRICE_DESC">Price: High to Low</option>
+                    <option value="STOCK_DESC">Inventory: Highest Stock</option>
+                    <option value="TITLE_AZ">Alphabetical: A to Z</option>
+                  </select>
+
+                  <div className="view-mode-toggles">
+                    <button
+                      className={`view-toggle-btn ${viewMode === 'grid' ? 'active' : ''}`}
+                      onClick={() => setViewMode('grid')}
+                      title="Grid View"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="3" y="3" width="7" height="7" rx="1.5"/>
+                        <rect x="14" y="3" width="7" height="7" rx="1.5"/>
+                        <rect x="14" y="14" width="7" height="7" rx="1.5"/>
+                        <rect x="3" y="14" width="7" height="7" rx="1.5"/>
+                      </svg>
+                    </button>
+                    <button
+                      className={`view-toggle-btn ${viewMode === 'list' ? 'active' : ''}`}
+                      onClick={() => setViewMode('list')}
+                      title="List View"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <line x1="8" y1="6" x2="21" y2="6"/>
+                        <line x1="8" y1="12" x2="21" y2="12"/>
+                        <line x1="8" y1="18" x2="21" y2="18"/>
+                        <line x1="3" y1="6" x2="3.01" y2="6"/>
+                        <line x1="3" y1="12" x2="3.01" y2="12"/>
+                        <line x1="3" y1="18" x2="3.01" y2="18"/>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
               </div>
 
+              {/* Category Filter Pills */}
               <div className="category-pills">
                 {categories.map((cat) => (
                   <button
-                    key={cat}
-                    className={`pill ${selectedCategory === cat ? 'active' : ''}`}
-                    onClick={() => setSelectedCategory(cat)}
+                    key={cat.label}
+                    className={`pill ${selectedCategory === cat.label ? 'active' : ''}`}
+                    onClick={() => setSelectedCategory(cat.label)}
                   >
-                    {cat}
+                    <span>{cat.icon}</span>
+                    <span>{cat.label}</span>
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Books Grid */}
+            {/* Results Count Summary */}
+            <div className="results-info-bar">
+              <div>
+                Showing <strong style={{ color: '#fff' }}>{sortedBooks.length}</strong> {sortedBooks.length === 1 ? 'book' : 'books'}
+                {selectedCategory !== 'ALL' && <span> in <span style={{ color: 'var(--accent-cyan)' }}>{selectedCategory}</span></span>}
+                {searchQuery && <span> matching &ldquo;<span style={{ color: '#fff' }}>{searchQuery}</span>&rdquo;</span>}
+              </div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>
+                Real-time synchronized with backend database
+              </div>
+            </div>
+
+            {/* Books Grid / List View */}
             {loadingBooks ? (
               <div className="empty-state">
+                <div className="pulse-dot" style={{ margin: '0 auto 1rem', width: '12px', height: '12px' }}></div>
                 <h3>Loading Bookstore Catalog...</h3>
                 <p>Connecting to backend API at Spring Boot server...</p>
               </div>
-            ) : books.length === 0 ? (
+            ) : sortedBooks.length === 0 ? (
               <div className="empty-state">
                 <h3>No Books Found</h3>
                 <p>
                   {searchQuery || selectedCategory !== 'ALL'
-                    ? 'No books match the filter criteria. Try another search or reset filters.'
-                    : 'Your catalog is empty. Click "Share New Book" above to publish your first title!'}
+                    ? 'No books match the filter criteria. Try resetting filters or searching another title.'
+                    : 'Your catalog is empty. Click "Publish Book" above to add your first title!'}
                 </p>
                 <button
                   className="btn btn-primary"
-                  style={{ marginTop: '1rem' }}
+                  style={{ marginTop: '1.25rem' }}
                   onClick={handleOpenAddBook}
                 >
-                  Add Your First Book
+                  Publish Your First Book
                 </button>
               </div>
             ) : (
-              <div className="books-grid">
-                {books.map((book) => (
+              <div className={`books-grid ${viewMode === 'list' ? 'list-view' : ''}`}>
+                {sortedBooks.map((book) => (
                   <BookCard
                     key={book.id}
                     book={book}
@@ -277,6 +395,42 @@ export default function Home() {
           />
         )}
       </main>
+
+      {/* Modern Cloud Architecture Footer */}
+      <footer className="footer">
+        <div className="container footer-inner">
+          <div className="footer-top">
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                <span style={{ fontSize: '1.2rem' }}>📚</span>
+                <strong style={{ fontFamily: 'var(--font-heading)', fontSize: '1.2rem', color: '#fff' }}>PageCraft Bookstore</strong>
+                <span className="brand-tag">v1.0.0</span>
+              </div>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', maxWidth: '420px' }}>
+                Full-stack cloud-native web application showcasing multi-tier architecture, persistent volume Docker Compose, and automated CI/CD.
+              </p>
+            </div>
+
+            <div className="footer-badges">
+              <span className="tech-badge">⚡ Spring Boot 3.2.3</span>
+              <span className="tech-badge">🐬 MySQL 8.0</span>
+              <span className="tech-badge">▲ Next.js 14</span>
+              <span className="tech-badge">🐳 Docker Compose</span>
+              <span className="tech-badge">☁️ AWS EC2</span>
+            </div>
+          </div>
+
+          <div className="footer-bottom">
+            <div>
+              &copy; {new Date().getFullYear()} PageCraft Cloud Bookstore • Designed for High Reliability & Scalability
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span className="pulse-dot"></span>
+              <span style={{ color: 'var(--accent-emerald)', fontWeight: 600 }}>All Systems Operational</span>
+            </div>
+          </div>
+        </div>
+      </footer>
 
       {/* Modals */}
       <BookDetailsModal

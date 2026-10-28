@@ -12,7 +12,19 @@ export default function OrderModal({ book, isOpen, onClose, onSubmitOrder }) {
 
   if (!isOpen || !book) return null;
 
-  const total = (Number(book.price) * quantity).toFixed(2);
+  const unitPrice = Number(book.price) || 0;
+  const subtotal = (unitPrice * quantity).toFixed(2);
+  const total = subtotal;
+
+  const handleDecrease = () => {
+    setQuantity((prev) => Math.max(1, prev - 1));
+  };
+
+  const handleIncrease = () => {
+    if (quantity < book.stockQuantity) {
+      setQuantity((prev) => prev + 1);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -51,7 +63,12 @@ export default function OrderModal({ book, isOpen, onClose, onSubmitOrder }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2 className="modal-title">Place Customer Order</h2>
+          <div>
+            <h2 className="modal-title">Place Customer Order</h2>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+              Immediate stock deduction & order fulfillment tracking
+            </p>
+          </div>
           <button className="close-btn" onClick={onClose}>&times;</button>
         </div>
 
@@ -62,7 +79,7 @@ export default function OrderModal({ book, isOpen, onClose, onSubmitOrder }) {
                 background: 'rgba(244,63,94,0.15)',
                 color: '#fb7185',
                 padding: '0.75rem 1rem',
-                borderRadius: '8px',
+                borderRadius: 'var(--radius-sm)',
                 border: '1px solid rgba(244,63,94,0.3)',
                 marginBottom: '1.25rem',
                 fontSize: '0.9rem'
@@ -71,38 +88,62 @@ export default function OrderModal({ book, isOpen, onClose, onSubmitOrder }) {
               </div>
             )}
 
-            {/* Book Item Summary */}
+            {/* Selected Book Summary Card */}
             <div style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              background: 'rgba(255,255,255,0.03)',
+              background: 'rgba(7, 9, 14, 0.7)',
               border: '1px solid var(--border-subtle)',
-              padding: '1rem',
-              borderRadius: '8px',
-              marginBottom: '1.5rem'
+              padding: '1rem 1.25rem',
+              borderRadius: 'var(--radius-sm)',
+              marginBottom: '1.5rem',
+              gap: '1rem',
+              flexWrap: 'wrap'
             }}>
-              <div>
-                <strong style={{ color: '#fff', fontSize: '1rem', display: 'block' }}>{book.title}</strong>
-                <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>${Number(book.price).toFixed(2)} each</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                {book.coverImageUrl && (
+                  <img
+                    src={book.coverImageUrl}
+                    alt={book.title}
+                    style={{ width: '45px', height: '60px', objectFit: 'cover', borderRadius: '4px' }}
+                  />
+                )}
+                <div>
+                  <strong style={{ color: '#fff', fontSize: '1rem', display: 'block', maxWidth: '300px' }}>
+                    {book.title}
+                  </strong>
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>
+                    By {book.author} • <span style={{ color: 'var(--accent-emerald)', fontWeight: 600 }}>${unitPrice.toFixed(2)}</span>
+                  </span>
+                </div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <label style={{ fontSize: '0.85rem', color: 'var(--text-light)' }}>Qty:</label>
-                <input
-                  type="number"
-                  min="1"
-                  max={book.stockQuantity}
-                  value={quantity}
-                  onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                  className="form-control"
-                  style={{ width: '70px', padding: '0.4rem' }}
-                  required
-                />
+
+              {/* Quantity Stepper */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <span style={{ fontSize: '0.82rem', color: 'var(--text-light)', fontWeight: 600 }}>Quantity:</span>
+                <div className="qty-stepper">
+                  <button type="button" className="qty-btn" onClick={handleDecrease}>−</button>
+                  <input
+                    type="text"
+                    readOnly
+                    className="qty-input"
+                    value={quantity}
+                  />
+                  <button
+                    type="button"
+                    className="qty-btn"
+                    onClick={handleIncrease}
+                    disabled={quantity >= book.stockQuantity}
+                  >
+                    +
+                  </button>
+                </div>
               </div>
             </div>
 
             <div className="form-grid">
-              <div className="form-grid form-grid-2">
+              <div className="form-grid-2">
                 <div className="form-group">
                   <label>Full Customer Name *</label>
                   <input
@@ -129,7 +170,7 @@ export default function OrderModal({ book, isOpen, onClose, onSubmitOrder }) {
               </div>
 
               <div className="form-group">
-                <label>Phone Number *</label>
+                <label>Contact Phone Number *</label>
                 <input
                   type="tel"
                   className="form-control"
@@ -141,29 +182,52 @@ export default function OrderModal({ book, isOpen, onClose, onSubmitOrder }) {
               </div>
 
               <div className="form-group">
-                <label>Delivery / Shipping Address *</label>
+                <label>Shipping / Destination Address *</label>
                 <textarea
                   className="form-control"
                   placeholder="Street Address, City, State, ZIP code"
                   value={shippingAddress}
                   onChange={(e) => setShippingAddress(e.target.value)}
-                  style={{ minHeight: '80px' }}
+                  style={{ minHeight: '75px' }}
                   required
                 />
               </div>
             </div>
 
-            {/* Total Calculation Display */}
+            {/* Price Breakdown Calculation */}
             <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
+              background: 'rgba(7, 9, 14, 0.5)',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: 'var(--radius-sm)',
+              padding: '1rem 1.25rem',
               marginTop: '1.5rem',
-              paddingTop: '1rem',
-              borderTop: '1px solid var(--border-subtle)'
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.45rem'
             }}>
-              <span style={{ fontSize: '1rem', color: 'var(--text-light)' }}>Total Amount to Charge:</span>
-              <span style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--accent-emerald)' }}>${total}</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                <span>Subtotal ({quantity} {quantity === 1 ? 'item' : 'items'}):</span>
+                <span>${subtotal}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                <span>Standard Delivery:</span>
+                <span style={{ color: 'var(--accent-emerald)', fontWeight: 600 }}>FREE (Complimentary)</span>
+              </div>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                fontSize: '1.05rem',
+                fontWeight: 800,
+                color: '#fff',
+                paddingTop: '0.5rem',
+                borderTop: '1px solid var(--border-subtle)',
+                marginTop: '0.25rem'
+              }}>
+                <span>Total Amount:</span>
+                <span style={{ color: 'var(--accent-emerald)', fontFamily: 'var(--font-heading)', fontSize: '1.25rem' }}>
+                  ${total}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -172,7 +236,10 @@ export default function OrderModal({ book, isOpen, onClose, onSubmitOrder }) {
               Cancel
             </button>
             <button type="submit" className="btn btn-primary" disabled={loading}>
-              {loading ? 'Processing...' : 'Confirm & Place Order'}
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+              {loading ? 'Processing Order...' : `Confirm & Pay $${total}`}
             </button>
           </div>
         </form>
